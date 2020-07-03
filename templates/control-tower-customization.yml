@@ -103,7 +103,7 @@ Resources:
       Runtime: python3.7
       Timeout: 60
 
-  PermissionForEventsToInvokeLambda:
+  NewRelicControlTowerCustomizationsPermission:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
