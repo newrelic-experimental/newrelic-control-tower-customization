@@ -7,55 +7,26 @@ Parameters:
     AllowedPattern: '[0-9]+'
   PolicyName: 
     Type: String
-    Default: NewRelicLambdaIntegrationRole
+    Default: NewRelicIntegrationRole
     Description: 'Policy name of the policy to use in the Role. If no value is supplied it will use the AWS default ReadOnlyAccess.
     The default AWS ReadOnlyAccess policy is managed by AWS and automatically gains new permissions as new services are introduced but
     includes a broad set of permissions which are not required by NewRelic integrations.
     If a value is supplied a custom policy will be created with the provided name. This custom policy only includes the minimum 
     required permissions to allow NewRelic to monitor your Lambda functions. Take into account that this policy is not automatically 
     updated by AWS, and must be managed by you.'
-  PolicyRegion: 
-    Type: 'String'
-    AllowedValues:
-      - us-east-2
-      - us-east-1
-      - us-west-1
-      - us-west-2
-      - af-south-1
-      - ap-east-1
-      - ap-south-1
-      - ap-northeast-3
-      - ap-northeast-2
-      - ap-southeast-1
-      - ap-southeast-2
-      - ap-northeast-1
-      - ca-central-1
-      - cn-north-1
-      - cn-northwest-1
-      - eu-central-1
-      - eu-west-1
-      - eu-west-2
-      - eu-south-1
-      - eu-west-3
-      - eu-north-1
-      - me-south-1
-      - sa-east-1
-    Description: 'Region (in target accounts) where IAM Role and Managed Policy will be deployed. 
-    Recommended to keep it same as your HOME region.'
 
 Conditions: 
-  CreatePolicy: !Equals [!Ref "AWS::Region", !Ref PolicyRegion]
-  UseCustomPolicy: !And [!Not [!Equals [ !Ref PolicyName, '']], Condition: CreatePolicy]
-  UseDefaultPolicy: !And [!Equals [ !Ref PolicyName, ''], Condition: CreatePolicy]
+  UseCustomPolicy: !Not [!Equals [ !Ref PolicyName, '']]
+  UseDefaultPolicy: !Equals [ !Ref PolicyName, '']
   
 Resources:
-  NewRelicDefaultPolicyLambdaRole:
+  NewRelicDefaultPolicyRole:
     Type: 'AWS::IAM::Role'
     Condition: UseDefaultPolicy
     Properties:
       ManagedPolicyArns: 
         - arn:aws:iam::aws:policy/ReadOnlyAccess
-      RoleName: !Join ['_', ['NewRelicLambdaIntegrationRole', !Ref NewRelicAccountNumber]]
+      RoleName: !Join ['_', ['NewRelicIntegrationRole', !Ref NewRelicAccountNumber]]
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -67,11 +38,11 @@ Resources:
               StringEquals:
                 'sts:ExternalId': !Ref NewRelicAccountNumber
 
-  NewRelicCustomPolicyLambdaRole:
+  NewRelicCustomPolicyRole:
     Type: 'AWS::IAM::Role'
     Condition: UseCustomPolicy
     Properties:
-      RoleName: !Join ['_', ['NewRelicLambdaIntegrationRole', !Ref NewRelicAccountNumber]]
+      RoleName: !Join ['_', ['NewRelicIntegrationRole', !Ref NewRelicAccountNumber]]
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -83,13 +54,13 @@ Resources:
               StringEquals:
                 'sts:ExternalId': !Ref NewRelicAccountNumber
 
-  NewRelicLambdaCustomPolicy:
+  NewRelicCustomPolicy:
     Type: 'AWS::IAM::ManagedPolicy'
     Condition: UseCustomPolicy
     Properties:    
       ManagedPolicyName: !Ref PolicyName
       Roles:
-        - !Ref NewRelicCustomPolicyLambdaRole
+        - !Ref NewRelicCustomPolicyRole
       PolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -196,7 +167,7 @@ Resources:
               - 's3:GetEncryptionConfiguration'
               - 's3:GetInventoryConfiguration'
               - 's3:GetIpConfiguration'
-              - 'ses:ListConfigurationSet'
+              - 'ses:ListConfigurationSets'
               - 'ses:GetSendQuota'
               - 'ses:DescribeConfigurationSet'
               - 'ses:ListReceiptFilters'
@@ -220,6 +191,8 @@ Resources:
               - 'ec2:DescribeSecurityGroups'
               - 'ec2:DescribeVpcPeeringConnections'
               - 'ec2:DescribeNetworkInterfaces'
+              - 'redshift:DescribeClusters'
+              - 'redshift:DescribeClusterParameters'
               - 'lambda:GetAccountSettings'
               - 'lambda:ListFunctions'
               - 'lambda:ListAliases'

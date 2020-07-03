@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Control Tower customization that adds in New Relic integration to your aws accounts created using Account Factory.
+Description: Control Tower customization that adds in New Relic integration to your aws accounts enrolled using AWS Control Tower.
 Resources:
-  CaptureControlTowerLifeCycleEvents:
+  NewRelicControlTowerEvents:
     Type: AWS::Events::Rule
     Properties:
       Description: Capture Control Tower LifeCycle Events and Trigger an Action
@@ -16,16 +16,16 @@ Resources:
         - AWS Service Event via CloudTrail
         source:
         - aws.controltower
-      Name: CaptureControlTowerLifeCycleEvents
+      Name: NewRelicControlTowerEvents
       State: ENABLED
       Targets:
-      - Arn: !GetAtt "TriggerCustomizationsOnLifeCycleEvent.Arn"
-        Id: IDCaptureControlTowerLifeCycleEvents
+      - Arn: !GetAtt "NewRelicControlTowerCustomizations.Arn"
+        Id: IDNewRelicControlTowerEvents
 
-  LambdaRoleToCaptureEvents:
+  NewRelicControlTowerCustomizationsRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: LambdaRoleToCaptureEvents
+      RoleName: NewRelicControlTowerCustomizationsRole
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -44,9 +44,9 @@ Resources:
                 Action:
                   - 'cloudformation:CreateStackInstances'
                 Resource: !Join [':',['arn:aws:cloudformation', !Ref 'AWS::Region', !Ref 'AWS::AccountId', 'stackset/*:*']]
-        - PolicyName: Pass_Role
+        - PolicyName: Pass-Role
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: 2012-10-17
             Statement:
               Effect: Allow
               Action:
@@ -55,7 +55,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
-  TriggerCustomizationsOnLifeCycleEvent:
+  NewRelicControlTowerCustomizations:
     Type: AWS::Lambda::Function
     Properties:
       Code:
@@ -87,7 +87,7 @@ Resources:
                       CFT = boto3.client('cloudformation')
                       for item in stackset_list:
                           try:
-                              result = CFT.create_stack_instances(StackSetName=item, Accounts=[accId], Regions=['us-east-1', 'us-east-2', 'us-west-1', 'us-west-2'])
+                              result = CFT.create_stack_instances(StackSetName=item, Accounts=[accId], Regions=[regionName])
                               LOGGER.info('Processed {} Sucessfully'.format(item))
                           except Exception as e:
                               LOGGER.error('Unable to launch in:{}, REASON: {}'.format(item, e))
@@ -99,7 +99,7 @@ Resources:
                   LOGGER.info('Control Tower Event Captured :{}'.format(event))
       Handler: index.lambda_handler
       MemorySize: 128
-      Role: !GetAtt "LambdaRoleToCaptureEvents.Arn"
+      Role: !GetAtt "NewRelicControlTowerCustomizationsRole.Arn"
       Runtime: python3.7
       Timeout: 60
 
@@ -107,6 +107,6 @@ Resources:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
-      FunctionName: !GetAtt "TriggerCustomizationsOnLifeCycleEvent.Arn"
+      FunctionName: !GetAtt "NewRelicControlTowerCustomizations.Arn"
       Principal: events.amazonaws.com
-      SourceArn: !GetAtt "CaptureControlTowerLifeCycleEvents.Arn"
+      SourceArn: !GetAtt "NewRelicControlTowerEvents.Arn"
