@@ -22,6 +22,11 @@ Conditions:
 Resources:
   NewRelicDefaultPolicyRole:
     Type: 'AWS::IAM::Role'
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W28
+            reason: "New Relic needs to name IAM roles to help uniquely identify them."
     Condition: UseDefaultPolicy
     Properties:
       ManagedPolicyArns: 
@@ -40,6 +45,11 @@ Resources:
 
   NewRelicCustomPolicyRole:
     Type: 'AWS::IAM::Role'
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W28
+            reason: "New Relic needs to name IAM roles to help uniquely identify them."
     Condition: UseCustomPolicy
     Properties:
       RoleName: !Join ['_', ['NewRelicIntegrationRole', !Ref NewRelicAccountNumber]]
@@ -56,6 +66,15 @@ Resources:
 
   NewRelicCustomPolicy:
     Type: 'AWS::IAM::ManagedPolicy'
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: F5
+            reason: "AWS Support does not support specifying a resource ARN in the Resource element of an IAM policy statement. To allow access to AWS Support, specify “Resource”: “*” in your policy."
+          - id: W13
+            reason: "New Relic needs permissions to read telemetry data from supported services for ALL the AWS resources in the account."
+          - id: W28
+            reason: "New Relic needs to name IAM roles to help uniquely identify them."
     Condition: UseCustomPolicy
     Properties:    
       ManagedPolicyName: !Ref PolicyName

@@ -24,6 +24,11 @@ Resources:
 
   NewRelicControlTowerCustomizationsRole:
     Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W28
+            reason: "New Relic needs to name IAM roles to help uniquely identify them."
     Properties:
       RoleName: NewRelicControlTowerCustomizationsRole
       AssumeRolePolicyDocument:
