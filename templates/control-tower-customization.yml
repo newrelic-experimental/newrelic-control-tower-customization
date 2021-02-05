@@ -193,6 +193,7 @@ Resources:
 
   NewRelicControlTowerCustomizations:
     Type: AWS::Lambda::Function
+    DependsOn: CopyZips
     Properties:
       Code:
         ZipFile: |

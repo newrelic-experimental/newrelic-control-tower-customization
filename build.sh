@@ -7,4 +7,4 @@ cd src
 zip -r newrelic_ct_customization.zip .
 popd > /dev/null
 aws s3 cp ./src/newrelic_ct_customization.zip  s3://$QSS3BucketName/$QSS3KeyPrefix/newrelic_ct_customization.zip --acl public-read
-aws s3 cp ./templates/control-tower-customization.yml s3://$QSS3BucketName/$QSS3KeyPrefix/control-tower-customization.yml --acl public-read
+aws s3 sync ./templates/ s3://$QSS3BucketName/$QSS3KeyPrefix/ --acl public-read
