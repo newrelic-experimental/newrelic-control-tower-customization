@@ -80,6 +80,7 @@ def create(event, context):
             if firstLaunch and len(os.environ['seedAccounts']) > 0 :
                 logger.info("New accounts : {}".format(os.environ['seedAccounts']))
                 accountList = os.environ['seedAccounts'].split(",")
+                ## TODO: send to SQS and let Lambda pick it
                 response = cloudFormationClient.create_stack_instances(StackSetName=stackSetName, Accounts=accountList, Regions=[regionName])
                 logger.info("StackSet instance created {}".format(response))
             else:

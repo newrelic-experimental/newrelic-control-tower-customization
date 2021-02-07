@@ -197,6 +197,13 @@ Resources:
             - s3:ListBucket
             - s3:GetObject
             Resource: arn:aws:s3:::Example*
+          - Sid: SQSOps
+            Effect: Allow
+            Action:
+            - sqs:SendMessage
+            - sqs:DeleteMessage
+            - sqs:ReceiveMessage
+            Resource: !GetAtt NewRelicSQS.Arn
           - Sid: PassRole
             Effect: Allow
             Action:
@@ -225,6 +232,20 @@ Resources:
     DependsOn:
     - NewRelicOnboardingFunction
 
+  NewRelicSQS:
+    Type: AWS::SQS::Queue
+    Properties: 
+      DelaySeconds: 5
+      MessageRetentionPeriod: 1209600
+      QueueName: String
+      RedrivePolicy: 
+        deadLetterTargetArn: !GetAtt NewRelicDLQ.Arn
+        maxReceiveCount: 3
+      VisibilityTimeout: 300
+  
+  NewRelicDLQ:
+    Type: AWS::SQS::Queue
+  
   NewRelicControlTowerEvents:
     Type: AWS::Events::Rule
     Properties:
