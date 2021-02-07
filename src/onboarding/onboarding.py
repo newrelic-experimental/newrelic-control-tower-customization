@@ -94,8 +94,6 @@ def create(event, context):
                         QueueUrl=newRelicSQS,
                         Entries=messageBatch)
                     logger.info("Queued for stackset instance creation: {}".format(sqsResponse))
-                    #response = cloudFormationClient.create_stack_instances(StackSetName=stackSetName, Accounts=accountList, Regions=[regionName])
-                    #logger.info("StackSet instance created {}".format(response))
                 except Exception as sqsException:
                     logger.error("Failed to send queue for stackset instance cration: {}".format(sqsException))
             else:

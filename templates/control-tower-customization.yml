@@ -43,6 +43,7 @@ Resources:
       Prefix: !Ref 'QSS3KeyPrefix'
       Objects:
         - 'lambda_packages/NewRelicCTOnboarding.zip'
+        - 'lambda_packages/NewRelicCTRegister.zip'
 
   CopyZipsRole:
     Type: AWS::IAM::Role
@@ -167,7 +168,7 @@ Resources:
           Action: sts:AssumeRole
       Path: /
       Policies:
-      - PolicyName: Stack_Operations
+      - PolicyName: Onboarding_Operations
         PolicyDocument:
           Version: 2012-10-17
           Statement:
@@ -245,6 +246,83 @@ Resources:
   
   NewRelicDLQ:
     Type: AWS::SQS::Queue
+  
+  NewRelicRegisterFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Path: /
+      Policies:
+      - PolicyName: Register_Operations
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+          - Sid: StackSetInstanceCreate
+            Effect: Allow
+            Action:
+            - cloudformation:CreateStackInstances
+            - cloudformation:ListStackInstances
+            Resource:
+              !Join ['', ['arn:aws:cloudformation:', !Ref 'AWS::Region', ':', !Ref 'AWS::AccountId', ':stackset/',  !Ref StackSetName, '*' ]]
+          - Sid: StackSetInstanceDelete
+            Effect: Allow
+            Action:
+            - cloudformation:DeleteStackInstances
+            - cloudformation:DescribeStackSetOperation
+            Resource:
+              !Join ['', ['arn:aws:cloudformation:', !Ref 'AWS::Region', ':', !Ref 'AWS::AccountId', ':stackset/',  !Ref StackSetName, '*' ]]
+          - Sid: StackSetOperations
+            Effect: Allow
+            Action:
+            - cloudformation:DescribeStackSet
+            Resource: '*'
+          - Sid: SQSOps
+            Effect: Allow
+            Action:
+            - sqs:SendMessage
+            - sqs:DeleteMessage
+            - sqs:ReceiveMessage
+            Resource: !GetAtt NewRelicSQS.Arn
+          - Sid: SecretRead
+            Effect: Allow
+            Action:
+            - secretsmanager:GetSecretValue
+            Resource:
+              Ref: NewRelicCredentials
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  
+  NewRelicRegisterFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: CopyZips
+    Properties:
+      Code:
+        S3Bucket: !Ref LambdaZipsBucket
+        S3Key: !Join ['', [!Ref 'QSS3KeyPrefix', 'lambda_packages/NewRelicCTRegister.zip']]
+      Handler: onboarding.lambda_handler
+      Runtime: python3.7
+      Timeout: 120
+      Environment:
+        Variables:
+          stackSetName: !Ref StackSetName
+          newRelicAccId: !Ref NewRelicAccountNumber
+          stackSetUrl: !Ref StackSetUrl
+          newRelicSecret: !Ref NewRelicCredentials
+      Role: !GetAtt NewRelicRegisterFunctionRole.Arn
+
+  NewRelicRegisterPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt NewRelicRegisterFunction.Arn
+      Principal: sqs.amazonaws.com
+      SourceArn: !GetAtt NewRelicSQS.Arn
   
   NewRelicControlTowerEvents:
     Type: AWS::Events::Rule
