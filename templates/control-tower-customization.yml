@@ -265,18 +265,14 @@ Resources:
         PolicyDocument:
           Version: 2012-10-17
           Statement:
-          - Sid: StackSetInstanceCreate
+          - Sid: StackSetInstanceOperations
             Effect: Allow
             Action:
             - cloudformation:CreateStackInstances
             - cloudformation:ListStackInstances
-            Resource:
-              !Join ['', ['arn:aws:cloudformation:', !Ref 'AWS::Region', ':', !Ref 'AWS::AccountId', ':stackset/',  !Ref StackSetName, '*' ]]
-          - Sid: StackSetInstanceDelete
-            Effect: Allow
-            Action:
-            - cloudformation:DeleteStackInstances
+            - cloudformation:ListStackSetOperations
             - cloudformation:DescribeStackSetOperation
+            - cloudformation:DeleteStackInstances
             Resource:
               !Join ['', ['arn:aws:cloudformation:', !Ref 'AWS::Region', ':', !Ref 'AWS::AccountId', ':stackset/',  !Ref StackSetName, '*' ]]
           - Sid: StackSetOperations

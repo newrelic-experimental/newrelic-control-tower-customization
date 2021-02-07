@@ -24,8 +24,35 @@ logging.getLogger('boto3').setLevel(logging.CRITICAL)
 logging.getLogger('botocore').setLevel(logging.CRITICAL)
 session = boto3.Session()
 
+def sqs_processing(messages):
+    target_stackset = {}
+    for message in messages:
+        target_accounts = []
+        target_regions = []
+        payload = json.loads(message['body'])
+        
+        target_accounts.append(payload['accountId'])
+        target_regions.append(payload['region'])
+        if payload['stackSetName'] in target_stackset:
+            target_stackset[payload['stackSetName']]['target_accounts'].extend(target_accounts)
+            target_stackset[payload['stackSetName']]['target_regions'].extend(target_regions)
+        else:
+            target_stackset[payload['stackSetName']] = { 'target_accounts': target_accounts, 'target_regions': target_regions}
+
+    stackset_processing(target_stackset)
+    
+def stackset_processing(messages):
+    for stackset in messages.items():
+        logger.info("Processing stack instances for {}".format(stackset))
+        target_accounts = set(stackset.target_accounts)
+        target_regions = set(stackset.target_regions)
+        logger.info(target_accounts)
+        logger.info(target_regions)
+
 def lambda_handler(event, context):
+    logger.info(json.dumps(event))
     try:
-        logger.info(event)
+        if 'Records' in event:
+            sqs_processing(event['Records'])
     except Exception as e:
         logger.error(e)
