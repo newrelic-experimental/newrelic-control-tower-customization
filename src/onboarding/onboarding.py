@@ -39,8 +39,8 @@ def create(event, context):
         firstLaunch = False
         stackSetName = os.environ['stackSetName']
         stackSetUrl = os.environ['stackSetUrl']
-        externalId = os.environ['externalId']
-        registerSNSTopic = os.environ['registerSNSTopic']
+        newRelicAccId = os.environ['newRelicAccId']
+        newRelicSecret = os.environ['newRelicSecret']
         managementAccountId = context.invoked_function_arn.split(":")[4]
         cloudFormationClient = session.client('cloudformation')
         regionName = context.invoked_function_arn.split(":")[3]
@@ -52,30 +52,12 @@ def create(event, context):
         logger.info('Stack set {} does not exist, creating it now.'.format(stackSetName))
         cloudFormationClient.create_stack_set(
             StackSetName=stackSetName,
-            Description='Example CloudFormation set',
+            Description='Adds in New Relic integration to your aws accounts. Launch as Stack Set in your Control Tower landing zone management account.',
             TemplateURL=stackSetUrl,
             Parameters=[
                 {
-                    'ParameterKey': 'ExampleExternalId',
-                    'ParameterValue': externalId,
-                    'UsePreviousValue': False,
-                    'ResolvedValue': 'string'
-                },
-                {
-                    'ParameterKey': 'RoleName',
-                    'ParameterValue': 'Example-connector',
-                    'UsePreviousValue': False,
-                    'ResolvedValue': 'string'
-                },
-                {
-                    'ParameterKey': 'PrincipalAws',
-                    'ParameterValue': 'arn:aws:iam::113835616590:root',
-                    'UsePreviousValue': False,
-                    'ResolvedValue': 'string'
-                },
-                {
-                    'ParameterKey': 'RegistrationSNS',
-                    'ParameterValue': registerSNSTopic,
+                    'ParameterKey': 'NewRelicAccountNumber',
+                    'ParameterValue': newRelicAccId,
                     'UsePreviousValue': False,
                     'ResolvedValue': 'string'
                 }
