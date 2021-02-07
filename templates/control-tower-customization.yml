@@ -41,7 +41,7 @@ Resources:
       SourceBucket: !Ref 'QSS3BucketName'
       Prefix: !Ref 'QSS3KeyPrefix'
       Objects:
-        - 'lambda_packages/newrelic_ct_customization.zip'
+        - 'lambda_packages/NewRelicCTOnboarding.zip'
   CopyZipsRole:
     Type: AWS::IAM::Role
     Properties:
