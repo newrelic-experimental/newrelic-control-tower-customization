@@ -3,7 +3,7 @@ BUCKET_PREFIX := wellsiau-quickstart
 KEY_PREFIX := newrelic
 PACKAGES_PREFIX := lambda_packages/
 CFT_PREFIX := templates
-CFT_DIR := template
+CFT_DIR := templates
 
 PROFILE := default
 REGION := us-east-1
@@ -34,7 +34,7 @@ $(s3_buckets): | $(BUILD_DIR)
 
 _upload: $(ZIP_FILES)
 	$(info [+] Uploading templates to $(BUCKET_NAME) bucket)
-	@aws --profile $(PROFILE) --region $(REGION) s3 cp $(CFT_DIR)/ s3://$(BUCKET_NAME)/$(KEY_PREFIX)/$(CFT_PREFIX) --recursive --exclude "*" --include "*.yaml" --acl public-read
+	@aws --profile $(PROFILE) --region $(REGION) s3 cp $(CFT_DIR)/ s3://$(BUCKET_NAME)/$(KEY_PREFIX)/$(CFT_PREFIX) --recursive --exclude "*" --include "*.yaml" --include "*.yml" --acl public-read
 
 $(ZIP_FILES):
 	@aws --profile $(PROFILE) --region $(REGION) s3 cp $@ s3://$(BUCKET_NAME)/$(KEY_PREFIX)/$(PACKAGES_PREFIX) --acl public-read

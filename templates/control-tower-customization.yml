@@ -15,11 +15,11 @@ Parameters:
   StackSetName:
     Type: String
     Description: Name of the stackset to be deployed
-    Default: ExampleStackSet
+    Default: NewRelicCTStackSet
   StackSetUrl:
     Type: String
     Description: StackSet template URL
-    Default: https://s3.amazonaws.com/113835616590.us-east-1.control-tower/example_role.yaml
+    Default: https://wellsiau-quickstart.s3.amazonaws.com/newrelic/templates/newrelic-stack-set.yml
   QSS3BucketName:
     Description: Flexera S3 bucket where the Lambda function package resides, do not modify this unless you are required by Flexera team
     AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
@@ -41,7 +41,7 @@ Resources:
       SourceBucket: !Ref 'QSS3BucketName'
       Prefix: !Ref 'QSS3KeyPrefix'
       Objects:
-        - newrelic_ct_customization.zip
+        - 'lambda_packages/newrelic_ct_customization.zip'
   CopyZipsRole:
     Type: AWS::IAM::Role
     Properties:
