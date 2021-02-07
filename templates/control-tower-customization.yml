@@ -244,6 +244,7 @@ Resources:
         deadLetterTargetArn: !GetAtt NewRelicDLQ.Arn
         maxReceiveCount: 3
       VisibilityTimeout: 120
+      ReceiveMessageWaitTimeSeconds: 10
   
   NewRelicDLQ:
     Type: AWS::SQS::Queue
@@ -310,6 +311,7 @@ Resources:
       Handler: register.lambda_handler
       Runtime: python3.7
       Timeout: 60
+      ReservedConcurrentExecutions: 1
       Environment:
         Variables:
           stackSetName: !Ref StackSetName
@@ -330,6 +332,7 @@ Resources:
     Type: AWS::Lambda::EventSourceMapping
     Properties: 
       BatchSize: 10
+      MaximumBatchingWindowInSeconds: 30
       EventSourceArn: !GetAtt NewRelicSQS.Arn
       FunctionName: !Ref NewRelicRegisterFunction
   
