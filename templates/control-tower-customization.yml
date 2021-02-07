@@ -15,7 +15,7 @@ Parameters:
   StackSetName:
     Type: String
     Description: Name of the stackset to be deployed
-    Default: NewRelicCTStackSet
+    Default: NewRelic-Integration 
   StackSetUrl:
     Type: String
     Description: StackSet template URL
@@ -144,6 +144,7 @@ Resources:
         S3Key: !Join ['', [!Ref 'QSS3KeyPrefix', 'lambda_packages/NewRelicCTOnboarding.zip']]
       Handler: onboarding.lambda_handler
       Runtime: python3.7
+      Timeout: 120
       Environment:
         Variables:
           stackSetName: !Ref StackSetName

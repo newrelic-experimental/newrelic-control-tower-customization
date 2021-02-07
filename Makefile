@@ -19,16 +19,13 @@ TOPTARGETS := all clean package build
 SUBDIRS := $(wildcard src/*/.)
 ZIP_FILES := $(shell find $(DIST_DIR) -type f -name '*.zip')
 
-$(BUILD_DIR):
-	@mkdir -p $(BUILD_DIR)
-
 $(TOPTARGETS): $(SUBDIRS)
 $(SUBDIRS):
 	$(MAKE) -C $@ $(MAKECMDGOALS) $(ARGS) DIST_DIR="${DIST_DIR}"
 
 upload: $(s3_buckets)
 
-$(s3_buckets): | $(BUILD_DIR)
+$(s3_buckets): 
 	$(info [+] Uploading artifacts to '$@' bucket)
 	@$(MAKE) _upload BUCKET_NAME=$@
 
