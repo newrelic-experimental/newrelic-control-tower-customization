@@ -86,8 +86,8 @@ def create(event, context):
                 messageBatch = []
                 for account in accountList:
                     message = {}
-                    message['Id'] = uuid.uuid4()
-                    message['MessageBody'] = { 'accountId': account, 'region': regionName}
+                    message['Id'] = str(uuid.uuid4())
+                    message['MessageBody'] = json.dumps({ 'accountId': account, 'region': regionName, 'stackSetName': stackSetName})
                     messageBatch.append(message)
                 try:
                     sqsResponse = sqsClient.send_message_batch(
