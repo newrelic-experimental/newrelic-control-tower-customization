@@ -41,7 +41,7 @@ def create(event, context):
         stackSetUrl = os.environ['stackSetUrl']
         newRelicAccId = os.environ['newRelicAccId']
         newRelicSecret = os.environ['newRelicSecret']
-        newRelicSQS = os.environ['newRelicSQS']
+        newRelicStackSQS = os.environ['newRelicStackSQS']
         managementAccountId = context.invoked_function_arn.split(":")[4]
         cloudFormationClient = session.client('cloudformation')
         regionName = context.invoked_function_arn.split(":")[3]
@@ -81,21 +81,16 @@ def create(event, context):
             if firstLaunch and len(os.environ['seedAccounts']) > 0 :
                 logger.info("New accounts : {}".format(os.environ['seedAccounts']))
                 accountList = os.environ['seedAccounts'].split(",")
-                ## TODO: send to SQS and let Lambda pick it
                 sqsClient = session.client('sqs')
-                messageBatch = []
-                for account in accountList:
-                    message = {}
-                    message['Id'] = str(uuid.uuid4())
-                    message['MessageBody'] = json.dumps({ 'accountId': account, 'region': regionName, 'stackSetName': stackSetName})
-                    messageBatch.append(message)
+                messageBody = {}
+                messageBody[stackSetName] = { 'target_accounts': accountList, 'target_regions': [regionName] }
                 try:
-                    sqsResponse = sqsClient.send_message_batch(
-                        QueueUrl=newRelicSQS,
-                        Entries=messageBatch)
+                    sqsResponse = sqsClient.send_message(
+                        QueueUrl=newRelicStackSQS,
+                        MessageBody=json.dumps(messageBody))
                     logger.info("Queued for stackset instance creation: {}".format(sqsResponse))
                 except Exception as sqsException:
-                    logger.error("Failed to send queue for stackset instance cration: {}".format(sqsException))
+                    logger.error("Failed to send queue for stackset instance creation: {}".format(sqsException))
             else:
                 logger.info("No additional StackSet instances requested")
         except Exception as create_exception:

@@ -27,28 +27,35 @@ session = boto3.Session()
 def sqs_processing(messages):
     target_stackset = {}
     for message in messages:
-        target_accounts = []
-        target_regions = []
         payload = json.loads(message['body'])
-        
-        target_accounts.append(payload['accountId'])
-        target_regions.append(payload['region'])
-        if payload['stackSetName'] in target_stackset:
-            target_stackset[payload['stackSetName']]['target_accounts'].extend(target_accounts)
-            target_stackset[payload['stackSetName']]['target_regions'].extend(target_regions)
-        else:
-            target_stackset[payload['stackSetName']] = { 'target_accounts': target_accounts, 'target_regions': target_regions}
+        stackset_check(payload)
 
-    stackset_processing(target_stackset)
+def stackset_check(messages):
+    cloudFormationClient = session.client('cloudformation')
+    sqsClient = session.client('sqs')
+    newRelicRegisterSQS = os.environ['newRelicRegisterSQS']
     
-def stackset_processing(messages):
-    for stackset in messages.items():
-        logger.info("Processing stack instances for {}".format(stackset))
-        target_accounts = set(stackset.target_accounts)
-        target_regions = set(stackset.target_regions)
-        logger.info(target_accounts)
-        logger.info(target_regions)
-
+    for stackSetName, params in messages.items():
+        logger.info("Checking stack instance status for {}".format(stackSetName))
+        try:
+            stackset_status = cloudFormationClient.describe_stack_set_operation(
+                StackSetName=stackSetName,
+                OperationId=params['OperationId']
+            )
+            if 'StackSetOperation' in stackset_status:
+                if stackset_status['StackSetOperation']['Status'] in ['RUNNING','STOPPING','QUEUED',]:
+                    logger.info("Stackset operation still running for")
+                    
+                elif stackset_status['StackSetOperation']['Status'] in ['SUCCEEDED']:
+                    logger.info("Start registration")
+                    
+                elif stackset_status['StackSetOperation']['Status'] in ['FAILED','STOPPED']:
+                    logger.warning("Stackset operation failed/stopped")
+            
+        except Exception as e:
+            logger.error(e)
+            raise e
+        
 def lambda_handler(event, context):
     logger.info(json.dumps(event))
     try:
