@@ -88,7 +88,7 @@ def create(event, context):
             logger.error('Exception creating stack instance with {}'.format(create_exception))
             raise create_exception
         
-        helper.Data.update({"result": result})
+        helper.Data.update({"result": stackSetName})
         
     # To return an error to cloudformation you raise an exception:
     if not helper.Data.get("result"):
