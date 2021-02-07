@@ -25,7 +25,7 @@ logging.getLogger('boto3').setLevel(logging.CRITICAL)
 logging.getLogger('botocore').setLevel(logging.CRITICAL)
 session = boto3.Session()
 
-helper = CfnResource(json_logging=True, log_level='INFO', boto_level='CRITICAL', sleep_on_delete=15)
+helper = CfnResource(json_logging=False, log_level='INFO', boto_level='CRITICAL', sleep_on_delete=15)
 
 @helper.create
 @helper.update
@@ -183,5 +183,8 @@ def delete(event, context):
     
     return None #Generate random ID
 def lambda_handler(event, context):
-    helper(event, context)
-    
+    logger.info(json.dumps(event))
+    try:
+        if 'RequestType' in event: helper(event, context)
+    except Exception as e:
+        helper.init_failure(e)
