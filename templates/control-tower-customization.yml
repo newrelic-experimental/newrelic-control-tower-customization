@@ -205,6 +205,7 @@ Resources:
             - sqs:SendMessage
             - sqs:DeleteMessage
             - sqs:ReceiveMessage
+            - sqs:GetQueueAttributes
             Resource: !GetAtt NewRelicSQS.Arn
           - Sid: PassRole
             Effect: Allow
@@ -242,7 +243,7 @@ Resources:
       RedrivePolicy: 
         deadLetterTargetArn: !GetAtt NewRelicDLQ.Arn
         maxReceiveCount: 3
-      VisibilityTimeout: 300
+      VisibilityTimeout: 120
   
   NewRelicDLQ:
     Type: AWS::SQS::Queue
@@ -288,6 +289,7 @@ Resources:
             - sqs:SendMessage
             - sqs:DeleteMessage
             - sqs:ReceiveMessage
+            - sqs:GetQueueAttributes
             Resource: !GetAtt NewRelicSQS.Arn
           - Sid: SecretRead
             Effect: Allow
@@ -305,9 +307,9 @@ Resources:
       Code:
         S3Bucket: !Ref LambdaZipsBucket
         S3Key: !Join ['', [!Ref 'QSS3KeyPrefix', 'lambda_packages/NewRelicCTRegister.zip']]
-      Handler: onboarding.lambda_handler
+      Handler: register.lambda_handler
       Runtime: python3.7
-      Timeout: 120
+      Timeout: 60
       Environment:
         Variables:
           stackSetName: !Ref StackSetName
@@ -323,6 +325,13 @@ Resources:
       FunctionName: !GetAtt NewRelicRegisterFunction.Arn
       Principal: sqs.amazonaws.com
       SourceArn: !GetAtt NewRelicSQS.Arn
+  
+  NewRelicRegisterEventSource:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties: 
+      BatchSize: 10
+      EventSourceArn: !GetAtt NewRelicSQS.Arn
+      FunctionName: !Ref NewRelicRegisterFunction
   
   NewRelicControlTowerEvents:
     Type: AWS::Events::Rule
