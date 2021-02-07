@@ -15,7 +15,7 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-import boto3, json, time, os, logging, botocore
+import boto3, json, time, os, logging, botocore, uuid
 from crhelper import CfnResource
 from botocore.exceptions import ClientError
 
@@ -25,7 +25,7 @@ logging.getLogger('boto3').setLevel(logging.CRITICAL)
 logging.getLogger('botocore').setLevel(logging.CRITICAL)
 session = boto3.Session()
 
-helper = CfnResource(json_logging=False, log_level='INFO', boto_level='CRITICAL', sleep_on_delete=15)
+helper = CfnResource(json_logging=True, log_level='INFO', boto_level='CRITICAL', sleep_on_delete=15)
 
 @helper.create
 @helper.update
@@ -41,6 +41,7 @@ def create(event, context):
         stackSetUrl = os.environ['stackSetUrl']
         newRelicAccId = os.environ['newRelicAccId']
         newRelicSecret = os.environ['newRelicSecret']
+        newRelicSQS = os.environ['newRelicSQS']
         managementAccountId = context.invoked_function_arn.split(":")[4]
         cloudFormationClient = session.client('cloudformation')
         regionName = context.invoked_function_arn.split(":")[3]
@@ -81,8 +82,22 @@ def create(event, context):
                 logger.info("New accounts : {}".format(os.environ['seedAccounts']))
                 accountList = os.environ['seedAccounts'].split(",")
                 ## TODO: send to SQS and let Lambda pick it
-                response = cloudFormationClient.create_stack_instances(StackSetName=stackSetName, Accounts=accountList, Regions=[regionName])
-                logger.info("StackSet instance created {}".format(response))
+                sqsClient = session.client('sqs')
+                messageBatch = []
+                for account in accountList:
+                    message = {}
+                    message['Id'] = uuid.uuid4()
+                    message['MessageBody'] = { 'accountId': account, 'region': regionName}
+                    messageBatch.append(message)
+                try:
+                    sqsResponse = sqsClient.send_message_batch(
+                        QueueUrl=newRelicSQS,
+                        Entries=messageBatch)
+                    logger.info("Queued for stackset instance creation: {}".format(sqsResponse))
+                    #response = cloudFormationClient.create_stack_instances(StackSetName=stackSetName, Accounts=accountList, Regions=[regionName])
+                    #logger.info("StackSet instance created {}".format(response))
+                except Exception as sqsException:
+                    logger.error("Failed to send queue for stackset instance cration: {}".format(sqsException))
             else:
                 logger.info("No additional StackSet instances requested")
         except Exception as create_exception:
