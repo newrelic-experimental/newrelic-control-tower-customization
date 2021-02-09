@@ -260,6 +260,8 @@ Resources:
   
   NewRelicDLQ:
     Type: AWS::SQS::Queue
+    Properties: 
+      MessageRetentionPeriod: 1209600
   
   NewRelicStackSetFunctionRole:
     Type: AWS::IAM::Role
@@ -381,6 +383,7 @@ Resources:
             Resource: 
             - !GetAtt NewRelicStackSQS.Arn
             - !GetAtt NewRelicRegisterSQS.Arn
+            - !GetAtt NewRelicDLQ.Arn
           - Sid: SecretRead
             Effect: Allow
             Action:
@@ -408,6 +411,7 @@ Resources:
           stackSetUrl: !Ref StackSetUrl
           newRelicSecret: !Ref NewRelicCredentials
           newRelicRegisterSQS: !Ref NewRelicRegisterSQS
+          newRelicDLQ: !Ref NewRelicDLQ
       Role: !GetAtt NewRelicRegisterFunctionRole.Arn
 
   NewRelicRegisterPermission:

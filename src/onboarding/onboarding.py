@@ -33,8 +33,7 @@ helper = CfnResource(json_logging=False, log_level='INFO', boto_level='CRITICAL'
 # 1. attempt to create stackset if one does not exist
 # 2. attempt to deploy stackset instance to target accounts
 def create(event, context):
-    logger.info("Onboarding stack launch")
-    
+    logger.info(json.dumps(event))
     try:
         firstLaunch = False
         stackSetName = os.environ['stackSetName']
@@ -116,8 +115,6 @@ def delete(event, context):
     try:
         stackSetName = os.environ['stackSetName']
         stackSetUrl = os.environ['stackSetUrl']
-        externalId = os.environ['externalId']
-        registerSNSTopic = os.environ['registerSNSTopic']
         managementAccountId = context.invoked_function_arn.split(":")[4]
         cloudFormationClient = session.client('cloudformation')
         regionName = context.invoked_function_arn.split(":")[3]

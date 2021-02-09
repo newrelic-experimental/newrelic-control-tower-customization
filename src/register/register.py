@@ -15,7 +15,7 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-import boto3, json, time, os, logging, botocore
+import boto3, json, time, os, logging, botocore, requests
 from botocore.exceptions import ClientError
 
 logger = logging.getLogger()
@@ -34,9 +34,10 @@ def stackset_check(messages):
     cloudFormationClient = session.client('cloudformation')
     sqsClient = session.client('sqs')
     newRelicRegisterSQS = os.environ['newRelicRegisterSQS']
+    newRelicDLQ = os.environ['newRelicDLQ']
     
     for stackSetName, params in messages.items():
-        logger.info("Checking stack instance status for {}".format(stackSetName))
+        logger.info("Checking stack set instances: {} {}".format(stackSetName, params['OperationId']))
         try:
             stackset_status = cloudFormationClient.describe_stack_set_operation(
                 StackSetName=stackSetName,
@@ -44,18 +45,51 @@ def stackset_check(messages):
             )
             if 'StackSetOperation' in stackset_status:
                 if stackset_status['StackSetOperation']['Status'] in ['RUNNING','STOPPING','QUEUED',]:
-                    logger.info("Stackset operation still running for")
-                    
+                    logger.info("Stackset operation still running")
+                    messageBody = {}
+                    messageBody[stackSetName] = {'OperationId': params['OperationId']}
+                    try:
+                        sqsResponse = sqsClient.send_message(
+                            QueueUrl=newRelicRegisterSQS,
+                            MessageBody=json.dumps(messageBody))
+                        logger.info("Re-queued for registration: {}".format(sqsResponse))
+                    except Exception as sqsException:
+                        logger.error("Failed to send queue for registration: {}".format(sqsException))        
+                
                 elif stackset_status['StackSetOperation']['Status'] in ['SUCCEEDED']:
                     logger.info("Start registration")
+                    newrelic_registration(stackset_status)
                     
                 elif stackset_status['StackSetOperation']['Status'] in ['FAILED','STOPPED']:
                     logger.warning("Stackset operation failed/stopped")
-            
+                    messageBody = {}
+                    messageBody[stackSetName] = {'OperationId': params['OperationId']}
+                    try:
+                        sqsResponse = sqsClient.send_message(
+                            QueueUrl=newRelicDLQ,
+                            MessageBody=json.dumps(messageBody))
+                        logger.info("Sent to DLQ: {}".format(sqsResponse))
+                    except Exception as sqsException:
+                        logger.error("Failed to send to DLQ: {}".format(sqsException))
+        
         except Exception as e:
             logger.error(e)
-            raise e
-        
+
+def newrelic_registration(stackset_status):
+    newRelicSecret = os.environ['newRelicSecret']
+    secretClient = session.client('secretsmanager')
+    
+    try:
+        secret_response = secretClient.get_secret_value(
+            SecretId=newRelicSecret
+        )
+    except Exception as e:
+        logger.error("Get Secret Failed: " + str(e))
+    else:
+        if 'SecretString' in secret_response:
+            secret = json.loads(secret_response['SecretString'])
+            logger.info(secret['AccessKey'])
+    
 def lambda_handler(event, context):
     logger.info(json.dumps(event))
     try:

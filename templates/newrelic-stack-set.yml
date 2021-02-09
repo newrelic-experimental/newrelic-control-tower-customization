@@ -63,7 +63,7 @@ Resources:
             Condition:
               StringEquals:
                 'sts:ExternalId': !Ref NewRelicAccountNumber
-
+                
   NewRelicCustomPolicy:
     Type: 'AWS::IAM::ManagedPolicy'
     Metadata:
