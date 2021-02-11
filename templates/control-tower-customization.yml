@@ -12,6 +12,12 @@ Parameters:
     Type: String
     NoEcho: true
     Description: NewRelic NerdGraph User Key
+  NerdGraphEndpoint:
+    Type: String
+    Default: 'https://api.newrelic.com/graphql'
+    AllowedValues:
+      - 'https://api.newrelic.com/graphql'
+      - 'https://api.eu.newrelic.com/graphiql'
   StackSetName:
     Type: String
     Description: Name of the stackset to be deployed
@@ -365,6 +371,7 @@ Resources:
             Action:
             - cloudformation:ListStackInstances
             - cloudformation:ListStackSetOperations
+            - cloudformation:ListStackSetOperationResults
             - cloudformation:DescribeStackSetOperation
             Resource:
               !Join ['', ['arn:aws:cloudformation:', !Ref 'AWS::Region', ':', !Ref 'AWS::AccountId', ':stackset/',  !Ref StackSetName, '*' ]]
@@ -412,6 +419,7 @@ Resources:
           newRelicSecret: !Ref NewRelicCredentials
           newRelicRegisterSQS: !Ref NewRelicRegisterSQS
           newRelicDLQ: !Ref NewRelicDLQ
+          nerdGraphEndPoint: !Ref NerdGraphEndpoint
       Role: !GetAtt NewRelicRegisterFunctionRole.Arn
 
   NewRelicRegisterPermission:
