@@ -133,15 +133,15 @@ def newrelic_registration(aws_account_id, access_key, newrelic_account_id, newre
         }}
     }}
     '''.format(newrelic_account_id, aws_account_id, role_arn)
-    logger.info('NerdGraph link account payload : {}'.format(json.dumps(link_payload)))
+    logger.debug('NerdGraph link account payload : {}'.format(json.dumps(link_payload)))
     
     response = requests.post(nerdGraphEndPoint, headers={'API-Key': access_key}, verify=True, data=link_payload)
     logger.info('NerdGraph response code : {}'.format(response.status_code))
-    logger.info('NerdGraph response : {}'.format(json.dumps(response.text)))
+    logger.info('NerdGraph response : {}'.format(response.text))
     if response.status_code == 200:
         link_response = json.loads(response.text)
         link_accound_id = link_response['data']['cloudLinkAccount']['linkedAccounts'][0]['id']
-        if len(link_response['data']['cloudLinkAccount']['errors']) > 10:
+        if len(link_response['data']['cloudLinkAccount']['errors']) > 0:
             logger.warning('NerdGraph error messages : {}'.format(link_response['data']['cloudLinkAccount']['errors']))
         else:
             service_payload = []
@@ -180,7 +180,7 @@ def newrelic_registration(aws_account_id, access_key, newrelic_account_id, newre
               }}
             }}
             '''.format(newrelic_account_id, '\n'.join(service_payload[1:]))
-            logger.info('NerdGraph integration payload : {}'.format(json.dumps(integration_payload)))
+            logger.debug('NerdGraph integration payload : {}'.format(json.dumps(integration_payload)))
             integration_response = requests.post(nerdGraphEndPoint, headers={'API-Key': access_key}, verify=True, data=integration_payload)
             logger.info('NerdGraph integration response code : {}'.format(integration_response.status_code))
             logger.info('NerdGraph integration response : {}'.format(integration_response.text))
