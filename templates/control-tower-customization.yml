@@ -1,5 +1,38 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: Control Tower customization that adds in New Relic integration to your aws accounts enrolled using AWS Control Tower.
+Metadata:
+  AWS::CloudFormation::Interface: 
+    ParameterGroups:
+      - Label:
+          default: "New Relic configuration"
+        Parameters:
+          - NewRelicAccountNumber
+          - NewRelicAccessKey
+          - NerdGraphEndpoint
+      - Label:
+          default: "Deployment scope and configuration"
+        Parameters:
+          - LaunchAccountList
+          - StackSetName
+          - StackSetUrl
+      - Label:
+          default: "AWS Quick Start configuration"
+        Parameters:
+          - QSS3BucketName
+          - QSS3KeyPrefix
+    ParameterLabels:
+      NewRelicAccountNumber:
+        default: "NewRelic Account Id"
+      NewRelicAccessKey:
+        default: "NewRelic NerdGraph Access Key"
+      NerdGraphEndpoint:
+        default: "NewRelic NerdGraph API endpoint"
+      LaunchAccountList:
+        default: "Existing AWS accounts include list"
+      StackSetName:
+        default: "StackSet name"
+      StackSetUrl:
+        default: "StackSet template URL"
 Parameters:
   NewRelicAccountNumber:
     Type: String
