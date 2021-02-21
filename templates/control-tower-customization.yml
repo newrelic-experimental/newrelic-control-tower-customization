@@ -437,3 +437,32 @@ Resources:
       MaximumBatchingWindowInSeconds: 30
       EventSourceArn: !GetAtt NewRelicRegisterSQS.Arn
       FunctionName: !Ref NewRelicRegisterFunction
+
+  NewRelicControlTowerEvents:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Capture Control Tower LifeCycle Events and Trigger an Action
+      EventPattern:
+        detail:
+          eventName:
+          - CreateManagedAccount
+          - UpdateManagedAccount
+          eventSource:
+          - controltower.amazonaws.com
+        detail-type:
+        - AWS Service Event via CloudTrail
+        source:
+        - aws.controltower
+      Name: NewRelicControlTowerEvents
+      State: ENABLED
+      Targets:
+      - Arn: !GetAtt "NewRelicStackSetFunction.Arn"
+        Id: IDNewRelicControlTowerEvents
+
+  NewRelicControlTowerLifeCyclePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt "NewRelicStackSetFunction.Arn"
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt "NewRelicControlTowerEvents.Arn"
