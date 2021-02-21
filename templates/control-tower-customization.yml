@@ -7,32 +7,33 @@ Parameters:
     AllowedPattern: '[0-9]+'
   LaunchAccountList:
     Type: String
-    Description: Comma delimited list of accounts to be included during initial launch. All new accounts will be automatically included via AWS Control Tower LifeCycleevents.
+    Description: Comma delimited list of accounts to be included during initial launch. All new accounts will be automatically included via AWS Control Tower LifeCycle events.
   NewRelicAccessKey:
     Type: String
     NoEcho: true
     Description: NewRelic NerdGraph User Key
   NerdGraphEndpoint:
     Type: String
+    Description: NewRelic NerdGraph endpoint URL
     Default: 'https://api.newrelic.com/graphql'
     AllowedValues:
       - 'https://api.newrelic.com/graphql'
       - 'https://api.eu.newrelic.com/graphiql'
   StackSetName:
     Type: String
-    Description: Name of the stackset to be deployed
+    Description: NewRelic CT Integration StackSet name
     Default: NewRelic-Integration 
   StackSetUrl:
     Type: String
-    Description: StackSet template URL
+    Description: NewRelic CT Integration StackSet template URL
     Default: https://wellsiau-quickstart.s3.amazonaws.com/newrelic/templates/newrelic-stack-set.yml
   QSS3BucketName:
-    Description: Flexera S3 bucket where the Lambda function package resides, do not modify this unless you are required by Flexera team
+    Description: Quick Start S3 bucket name
     AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
     Default: 'wellsiau-quickstart'
     Type: String
   QSS3KeyPrefix:
-    Description: Flexera S3 bucket prefix where the Lambda function package resides, do not modify this unless you are required by Flexera team
+    Description: Quick Start S3 key prefix
     AllowedPattern: ^[0-9a-zA-Z-/_]*$
     Default: 'newrelic/'
     Type: String
@@ -205,7 +206,8 @@ Resources:
             Action:
             - s3:ListBucket
             - s3:GetObject
-            Resource: arn:aws:s3:::Example*
+            Resource: 
+            - !Join ['',['arn:aws:s3:::', !Ref QSS3BucketName, '/', !Ref QSS3KeyPrefix, '*']]
           - Sid: SQSOps
             Effect: Allow
             Action:
