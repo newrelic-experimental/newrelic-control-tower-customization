@@ -40,7 +40,7 @@ def create(event, context):
         stackSetUrl = os.environ['stackSetUrl']
         newRelicAccId = os.environ['newRelicAccId']
         newRelicSecret = os.environ['newRelicSecret']
-        newRelicStackSQS = os.environ['newRelicStackSQS']
+        newRelicStackSNS = os.environ['newRelicStackSNS']
         managementAccountId = context.invoked_function_arn.split(":")[4]
         cloudFormationClient = session.client('cloudformation')
         regionName = context.invoked_function_arn.split(":")[3]
@@ -80,16 +80,17 @@ def create(event, context):
             if firstLaunch and len(os.environ['seedAccounts']) > 0 :
                 logger.info("New accounts : {}".format(os.environ['seedAccounts']))
                 accountList = os.environ['seedAccounts'].split(",")
-                sqsClient = session.client('sqs')
+                snsClient = session.client('sns')
                 messageBody = {}
                 messageBody[stackSetName] = { 'target_accounts': accountList, 'target_regions': [regionName] }
                 try:
-                    sqsResponse = sqsClient.send_message(
-                        QueueUrl=newRelicStackSQS,
-                        MessageBody=json.dumps(messageBody))
-                    logger.info("Queued for stackset instance creation: {}".format(sqsResponse))
-                except Exception as sqsException:
-                    logger.error("Failed to send queue for stackset instance creation: {}".format(sqsException))
+                    snsResponse = snsClient.publish(
+                        TopicArn=newRelicStackSNS,
+                        Message = json.dumps(messageBody))
+                    
+                    logger.info("Queued for stackset instance creation: {}".format(snsResponse))
+                except Exception as snsException:
+                    logger.error("Failed to send queue for stackset instance creation: {}".format(snsException))
             else:
                 logger.info("No additional StackSet instances requested")
         except Exception as create_exception:

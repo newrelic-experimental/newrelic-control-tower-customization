@@ -24,16 +24,17 @@ logging.getLogger('boto3').setLevel(logging.CRITICAL)
 logging.getLogger('botocore').setLevel(logging.CRITICAL)
 session = boto3.Session()
 
-def sqs_processing(messages):
+def message_processing(messages):
     target_stackset = {}
     for message in messages:
-        payload = json.loads(message['body'])
+        payload = json.loads(message['Sns']['Message'])
         stackset_check(payload)
 
 def stackset_check(messages):
     cloudFormationClient = session.client('cloudformation')
     sqsClient = session.client('sqs')
-    newRelicRegisterSQS = os.environ['newRelicRegisterSQS']
+    snsClient = session.client('sns')
+    newRelicRegisterSNS = os.environ['newRelicRegisterSNS']
     newRelicDLQ = os.environ['newRelicDLQ']
     
     for stackSetName, params in messages.items():
@@ -49,12 +50,15 @@ def stackset_check(messages):
                     messageBody = {}
                     messageBody[stackSetName] = {'OperationId': params['OperationId']}
                     try:
-                        sqsResponse = sqsClient.send_message(
-                            QueueUrl=newRelicRegisterSQS,
-                            MessageBody=json.dumps(messageBody))
-                        logger.info("Re-queued for registration: {}".format(sqsResponse))
-                    except Exception as sqsException:
-                        logger.error("Failed to send queue for registration: {}".format(sqsException))        
+                        logger.info("Sleep and wait for 20 seconds")
+                        time.sleep(20)
+                        snsResponse = snsClient.publish(
+                            TopicArn=newRelicRegisterSNS,
+                            Message = json.dumps(messageBody))
+
+                        logger.info("Re-queued for registration: {}".format(snsResponse))
+                    except Exception as snsException:
+                        logger.error("Failed to send queue for registration: {}".format(snsException))
                 
                 elif stackset_status['StackSetOperation']['Status'] in ['SUCCEEDED']:
                     logger.info("Start registration")
@@ -252,6 +256,6 @@ def lambda_handler(event, context):
     logger.info(json.dumps(event))
     try:
         if 'Records' in event:
-            sqs_processing(event['Records'])
+            message_processing(event['Records'])
     except Exception as e:
         logger.error(e)

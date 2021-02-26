@@ -194,7 +194,7 @@ Resources:
           seedAccounts: !Ref LaunchAccountList
           stackSetUrl: !Ref StackSetUrl
           newRelicSecret: !Ref NewRelicCredentials
-          newRelicStackSQS: !Ref NewRelicStackSQS
+          newRelicStackSNS: !Ref NewRelicStackSNS
       Role: !GetAtt NewRelicOnboardingFunctionRole.Arn
 
   NewRelicOnboardingFunctionRole:
@@ -241,14 +241,11 @@ Resources:
             - s3:GetObject
             Resource: 
             - !Join ['',['arn:aws:s3:::', !Ref QSS3BucketName, '/', !Ref QSS3KeyPrefix, '*']]
-          - Sid: SQSOps
+          - Sid: SNSOps
             Effect: Allow
             Action:
-            - sqs:SendMessage
-            - sqs:DeleteMessage
-            - sqs:ReceiveMessage
-            - sqs:GetQueueAttributes
-            Resource: !GetAtt NewRelicStackSQS.Arn
+            - sns:Publish
+            Resource: !Ref NewRelicStackSNS
           - Sid: PassRole
             Effect: Allow
             Action:
@@ -277,28 +274,42 @@ Resources:
     DependsOn:
     - NewRelicOnboardingFunction
 
-  NewRelicStackSQS:
-    Type: AWS::SQS::Queue
-    Properties: 
-      DelaySeconds: 5
-      MessageRetentionPeriod: 1209600
-      RedrivePolicy: 
-        deadLetterTargetArn: !GetAtt NewRelicDLQ.Arn
-        maxReceiveCount: 3
-      VisibilityTimeout: 120
-      ReceiveMessageWaitTimeSeconds: 10
+  NewRelicStackSNS:
+    Type: AWS::SNS::Topic
   
-  NewRelicRegisterSQS:
-    Type: AWS::SQS::Queue
-    Properties: 
-      DelaySeconds: 5
-      MessageRetentionPeriod: 1209600
-      RedrivePolicy: 
-        deadLetterTargetArn: !GetAtt NewRelicDLQ.Arn
-        maxReceiveCount: 3
-      VisibilityTimeout: 120
-      ReceiveMessageWaitTimeSeconds: 10
-  
+  NewRelicStackSNSLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt NewRelicStackSetFunction.Arn
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref NewRelicStackSNS
+
+  NewRelicStackSNSSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !GetAtt NewRelicStackSetFunction.Arn
+      Protocol: lambda
+      TopicArn: !Ref NewRelicStackSNS
+
+  NewRelicRegisterSNS:
+    Type: AWS::SNS::Topic
+
+  NewRelicRegisterSNSLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt NewRelicRegisterFunction.Arn
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref NewRelicRegisterSNS
+
+  NewRelicRegisterSNSSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !GetAtt NewRelicRegisterFunction.Arn
+      Protocol: lambda
+      TopicArn: !Ref NewRelicRegisterSNS
+      
   NewRelicDLQ:
     Type: AWS::SQS::Queue
     Properties: 
@@ -335,16 +346,13 @@ Resources:
             Action:
             - cloudformation:DescribeStackSet
             Resource: '*'
-          - Sid: SQSOps
+          - Sid: SNSOps
             Effect: Allow
             Action:
-            - sqs:SendMessage
-            - sqs:DeleteMessage
-            - sqs:ReceiveMessage
-            - sqs:GetQueueAttributes
+            - sns:Publish
             Resource: 
-            - !GetAtt NewRelicStackSQS.Arn
-            - !GetAtt NewRelicRegisterSQS.Arn
+            - !Ref NewRelicStackSNS
+            - !Ref NewRelicRegisterSNS
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
   
@@ -357,7 +365,7 @@ Resources:
         S3Key: !Join ['', [!Ref 'QSS3KeyPrefix', 'lambda_packages/NewRelicCTStackSet.zip']]
       Handler: stackset.lambda_handler
       Runtime: python3.7
-      Timeout: 60
+      Timeout: 120
       ReservedConcurrentExecutions: 1
       Environment:
         Variables:
@@ -365,25 +373,9 @@ Resources:
           newRelicAccId: !Ref NewRelicAccountNumber
           stackSetUrl: !Ref StackSetUrl
           newRelicSecret: !Ref NewRelicCredentials
-          newRelicStackSQS: !Ref NewRelicStackSQS
-          newRelicRegisterSQS: !Ref NewRelicRegisterSQS
+          newRelicStackSNS: !Ref NewRelicStackSNS
+          newRelicRegisterSNS: !Ref NewRelicRegisterSNS
       Role: !GetAtt NewRelicStackSetFunctionRole.Arn
-
-  NewRelicStackSetPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !GetAtt NewRelicStackSetFunction.Arn
-      Principal: sqs.amazonaws.com
-      SourceArn: !GetAtt NewRelicStackSQS.Arn
-  
-  NewRelicStackSetEventSource:
-    Type: AWS::Lambda::EventSourceMapping
-    Properties: 
-      BatchSize: 10
-      MaximumBatchingWindowInSeconds: 30
-      EventSourceArn: !GetAtt NewRelicStackSQS.Arn
-      FunctionName: !Ref NewRelicStackSetFunction
 
   NewRelicRegisterFunctionRole:
     Type: AWS::IAM::Role
@@ -423,9 +415,13 @@ Resources:
             - sqs:ReceiveMessage
             - sqs:GetQueueAttributes
             Resource: 
-            - !GetAtt NewRelicStackSQS.Arn
-            - !GetAtt NewRelicRegisterSQS.Arn
             - !GetAtt NewRelicDLQ.Arn
+          - Sid: SNSOps
+            Effect: Allow
+            Action:
+            - sns:Publish
+            Resource: 
+            - !Ref NewRelicRegisterSNS
           - Sid: SecretRead
             Effect: Allow
             Action:
@@ -444,7 +440,7 @@ Resources:
         S3Key: !Join ['', [!Ref 'QSS3KeyPrefix', 'lambda_packages/NewRelicCTRegister.zip']]
       Handler: register.lambda_handler
       Runtime: python3.7
-      Timeout: 60
+      Timeout: 120
       ReservedConcurrentExecutions: 5
       Environment:
         Variables:
@@ -452,26 +448,10 @@ Resources:
           newRelicAccId: !Ref NewRelicAccountNumber
           stackSetUrl: !Ref StackSetUrl
           newRelicSecret: !Ref NewRelicCredentials
-          newRelicRegisterSQS: !Ref NewRelicRegisterSQS
+          newRelicRegisterSNS: !Ref NewRelicRegisterSNS
           newRelicDLQ: !Ref NewRelicDLQ
           nerdGraphEndPoint: !Ref NerdGraphEndpoint
       Role: !GetAtt NewRelicRegisterFunctionRole.Arn
-
-  NewRelicRegisterPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !GetAtt NewRelicRegisterFunction.Arn
-      Principal: sqs.amazonaws.com
-      SourceArn: !GetAtt NewRelicRegisterSQS.Arn
-  
-  NewRelicRegisterEventSource:
-    Type: AWS::Lambda::EventSourceMapping
-    Properties: 
-      BatchSize: 10
-      MaximumBatchingWindowInSeconds: 30
-      EventSourceArn: !GetAtt NewRelicRegisterSQS.Arn
-      FunctionName: !Ref NewRelicRegisterFunction
 
   NewRelicControlTowerEvents:
     Type: AWS::Events::Rule

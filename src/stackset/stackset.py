@@ -24,17 +24,17 @@ logging.getLogger('boto3').setLevel(logging.CRITICAL)
 logging.getLogger('botocore').setLevel(logging.CRITICAL)
 session = boto3.Session()
 
-def sqs_processing(messages):
+def message_processing(messages):
     target_stackset = {}
     for message in messages:
-        payload = json.loads(message['body'])
+        payload = json.loads(message['Sns']['Message'])
         stackset_processing(payload)
     
 def stackset_processing(messages):
     cloudFormationClient = session.client('cloudformation')
-    sqsClient = session.client('sqs')
-    newRelicStackSQS = os.environ['newRelicStackSQS']
-    newRelicRegisterSQS = os.environ['newRelicRegisterSQS']
+    snsClient = session.client('sns')
+    newRelicStackSNS = os.environ['newRelicStackSNS']
+    newRelicRegisterSNS = os.environ['newRelicRegisterSNS']
     
     for stackSetName, params in messages.items():
         logger.info("Processing stack instances for {}".format(stackSetName))
@@ -65,23 +65,27 @@ def stackset_processing(messages):
                 messageBody = {}
                 messageBody[stackSetName] = {'OperationId': response['OperationId']}
                 try:
-                    sqsResponse = sqsClient.send_message(
-                        QueueUrl=newRelicRegisterSQS,
-                        MessageBody=json.dumps(messageBody))
-                    logger.info("Queued for registration: {}".format(sqsResponse))
-                except Exception as sqsException:
-                    logger.error("Failed to send queue for registration: {}".format(sqsException))                
+                    snsResponse = snsClient.publish(
+                        TopicArn=newRelicRegisterSNS,
+                        Message = json.dumps(messageBody))
+                        
+                    logger.info("Queued for registration: {}".format(snsResponse))
+                except Exception as snsException:
+                    logger.error("Failed to send queue for registration: {}".format(snsException))                
             else:
                 logger.warning("Existing StackSet operations still running")
                 messageBody = {}
                 messageBody[stackSetName] = messages[stackSetName]
                 try:
-                    sqsResponse = sqsClient.send_message(
-                        QueueUrl=newRelicStackSQS,
-                        MessageBody=json.dumps(messageBody))
-                    logger.info("Re-queued for stackset instance creation: {}".format(sqsResponse))
-                except Exception as sqsException:
-                    logger.error("Failed to send queue for stackset instance creation: {}".format(sqsException))
+                    logger.info("Sleep and wait for 20 seconds")
+                    time.sleep(20)
+                    snsResponse = snsClient.publish(
+                        TopicArn=newRelicStackSNS,
+                        Message = json.dumps(messageBody))
+                        
+                    logger.info("Re-queued for stackset instance creation: {}".format(snsResponse))
+                except Exception as snsException:
+                    logger.error("Failed to send queue for stackset instance creation: {}".format(snsException))
 
         except cloudFormationClient.exceptions.StackSetNotFoundException as describeException:
             logger.error('Exception getting stack set, {}'.format(describeException))
@@ -179,7 +183,7 @@ def lambda_handler(event, context):
     logger.info(json.dumps(event))
     try:
         if 'Records' in event:
-            sqs_processing(event['Records'])
+            message_processing(event['Records'])
         elif 'detail' in event and event['detail']['eventName'] == 'CreateManagedAccount':
             lifecycle_processing(event)
     except Exception as e:
