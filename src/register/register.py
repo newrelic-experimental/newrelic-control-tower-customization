@@ -133,6 +133,7 @@ def newrelic_registration(aws_account_id, access_key, newrelic_account_id, newre
             {{
                 type
                 message
+                linkedAccountId
             }}
         }}
     }}
@@ -144,10 +145,9 @@ def newrelic_registration(aws_account_id, access_key, newrelic_account_id, newre
     logger.info('NerdGraph response : {}'.format(response.text))
     if response.status_code == 200:
         link_response = json.loads(response.text)
-        link_accound_id = link_response['data']['cloudLinkAccount']['linkedAccounts'][0]['id']
-        if len(link_response['data']['cloudLinkAccount']['errors']) > 0:
-            logger.warning('NerdGraph error messages : {}'.format(link_response['data']['cloudLinkAccount']['errors']))
-        else:
+        
+        try:
+            link_accound_id = link_response['data']['cloudLinkAccount']['linkedAccounts'][0]['id']
             service_payload = []
             for service in newrelic_integration_list:
                 service_payload.append('{0}: [{{ linkedAccountId: {1} }}]'.format(service, link_accound_id))
@@ -188,7 +188,16 @@ def newrelic_registration(aws_account_id, access_key, newrelic_account_id, newre
             integration_response = requests.post(nerdGraphEndPoint, headers={'API-Key': access_key}, verify=True, data=integration_payload)
             logger.info('NerdGraph integration response code : {}'.format(integration_response.status_code))
             logger.info('NerdGraph integration response : {}'.format(integration_response.text))
- 
+            
+        except Exception as create_exception:
+            if len(link_response['data']['cloudLinkAccount']['errors']) > 0:
+                logger.warning('NerdGraph error messages : {}'.format(link_response['data']['cloudLinkAccount']['errors']))    
+                for error in link_response['data']['cloudLinkAccount']['errors']:
+                    if 'AWS account is already linked ' in error['message']:
+                        logger.warning('AWS Account {} already linked, skipping'.format(aws_account_id))
+            else:
+                logger.error('Exception {}'.format(create_exception))
+
 def newrelic_get_integration(access_key, newrelic_account_id):
     nerdGraphEndPoint = os.environ['nerdGraphEndPoint']
     service_query = '''
