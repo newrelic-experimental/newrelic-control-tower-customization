@@ -9,6 +9,7 @@ PROFILE := default
 REGION := us-east-1
 
 BUCKET_NAME ?= service_not_defined
+BASE = $(shell /bin/pwd)
 BUILD_DIR = $(shell /bin/pwd)/build
 DIST_DIR = $(shell /bin/pwd)/dist
 
@@ -16,12 +17,12 @@ s3_buckets := $(BUCKET_PREFIX)
 
 TOPTARGETS := all clean package build
 
-SUBDIRS := $(wildcard src/*/.)
+SUBDIRS := $(wildcard functions/source/*/.)
 ZIP_FILES := $(shell find $(DIST_DIR) -type f -name '*.zip')
 
 $(TOPTARGETS): $(SUBDIRS)
 $(SUBDIRS):
-	$(MAKE) -C $@ $(MAKECMDGOALS) $(ARGS) DIST_DIR="${DIST_DIR}"
+	$(MAKE) -C $@ $(MAKECMDGOALS) $(ARGS) BASE="${BASE}"
 
 upload: $(s3_buckets)
 
