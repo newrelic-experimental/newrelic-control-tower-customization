@@ -183,7 +183,7 @@ def newrelic_registration(aws_account_id, access_key, newrelic_account_id, newre
                 }}
               }}
             }}
-            '''.format(newrelic_account_id, '\n'.join(service_payload[1:]))
+            '''.format(newrelic_account_id, '\n'.join(service_payload))
             logger.debug('NerdGraph integration payload : {}'.format(json.dumps(integration_payload)))
             integration_response = requests.post(nerdGraphEndPoint, headers={'API-Key': access_key}, verify=True, data=integration_payload)
             logger.info('NerdGraph integration response code : {}'.format(integration_response.status_code))

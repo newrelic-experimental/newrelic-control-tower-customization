@@ -55,20 +55,17 @@ Parameters:
   StackSetName:
     Type: String
     Description: NewRelic CT Integration StackSet name
-    Default: NewRelic-Integration 
+    Default: NewRelic-Integration
   StackSetUrl:
     Type: String
     Description: NewRelic CT Integration StackSet template URL
-    Default: https://wellsiau-quickstart.s3.amazonaws.com/newrelic/templates/newrelic-stack-set.yml
   QSS3BucketName:
     Description: Quick Start S3 bucket name
     AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
-    Default: 'wellsiau-quickstart'
     Type: String
   QSS3KeyPrefix:
     Description: Quick Start S3 key prefix
     AllowedPattern: ^[0-9a-zA-Z-/_]*$
-    Default: 'newrelic/'
     Type: String
 Resources:
   LambdaZipsBucket:
@@ -268,11 +265,12 @@ Resources:
 
   NewRelicFirstLaunch:
     Type: AWS::CloudFormation::CustomResource
+    DependsOn:
+      - NewRelicStackSNSSubscription
+      - NewRelicRegisterSNSSubscription
     Properties:
       ServiceToken:
         !GetAtt NewRelicOnboardingFunction.Arn
-    DependsOn:
-    - NewRelicOnboardingFunction
 
   NewRelicStackSNS:
     Type: AWS::SNS::Topic
